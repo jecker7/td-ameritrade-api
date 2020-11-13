@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<configuration scan="false" scanPeriod="3 seconds" debug="true">
+<configuration scan="false" scanPeriod="3 seconds" debug="false">
   <contextName>main</contextName>
 
   <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
@@ -10,8 +10,10 @@
     </encoder>
   </appender>
 
-  <logger name="TDA_HTTP" level="debug"/>
-  <logger name="com.studerw" level="debug"/>
+  <logger  name="TDA_HTTP" level="info"/>
+  <logger name="com.studerw.tda" level="info"/>
+  <logger name="com.studerw.tda.client.OauthInterceptor" level="INFO"/>
+  <logger name="com.squareup.okhttp3" level="INFO"/>
 
   <root level="WARN">
     <appender-ref ref="STDOUT"/>

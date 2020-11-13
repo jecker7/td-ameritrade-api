@@ -1,21 +1,14 @@
 package com.studerw.tda.client;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Fail.fail;
 
-import com.studerw.tda.model.PriceHistory;
-import com.studerw.tda.model.PriceHistory.Result;
-import com.studerw.tda.model.history.IntervalType;
-import com.studerw.tda.model.history.PeriodType;
-import java.io.File;
-import java.io.IOException;
-import java.time.LocalDate;
-import java.util.Arrays;
-import java.util.List;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.StringUtils;
+import com.studerw.tda.model.history.Candle;
+import com.studerw.tda.model.history.FrequencyType;
+import com.studerw.tda.model.history.PriceHistReq;
+import com.studerw.tda.model.history.PriceHistReq.Builder;
+import com.studerw.tda.model.history.PriceHistory;
+import java.math.BigDecimal;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -26,45 +19,172 @@ public class PriceHistoryTestIT extends BaseTestIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PriceHistoryTestIT.class);
 
+  //"VTSAX", "MSFT", "NOK/JPY", "$SPX.X", "MSFT_061821P65", "SPY");
+
   @Test
-  public void testPriceHistory() throws Exception {
-    PriceHistory priceHistory = httpTdaClient
-        .priceHistory(Arrays.asList("MSFT"), IntervalType.DAILY, 1, PeriodType.MONTH, 1, null,
-            null, false);
-    assertNotNull("priceHistory not null", priceHistory);
-    List<Result> results = priceHistory.getResults();
-    assertTrue("should have only 1 result", results.size() == 1);
-    Result result = results.get(0);
-    LOGGER.debug("Count of chart bars: {}", result.getChartBars().size());
-    assertEquals("Should have symbol MSFT", result.getSymbol(), "MSFT");
-    result.getChartBars().stream().forEach(cb -> {
-      assertFalse("should not be null", cb.getClose() == null);
-      LOGGER.debug("{}", cb.toString());
-    });
+  public void testPriceHistoryEquity() {
+    long now = System.currentTimeMillis();
+    PriceHistory priceHistory = httpTdaClient.priceHistory("msft");
+    assertThat(priceHistory).isNotNull();
+    assertThat(priceHistory.getCandles().size()).isGreaterThan(1000);
+    assertThat(priceHistory.getSymbol()).isEqualTo("MSFT");
+    assertThat(priceHistory.isEmpty()).isFalse();
+    LOGGER.debug(priceHistory.toString());
+    Candle candle = priceHistory.getCandles().get(10);
+    LOGGER.debug(candle.toString());
+    assertThat(candle.getOpen()).isGreaterThan(new BigDecimal("1.00"));
+    assertThat(candle.getHigh()).isGreaterThan(new BigDecimal("1.00"));
+    assertThat(candle.getLow()).isGreaterThan(new BigDecimal("1.00"));
+    assertThat(candle.getClose()).isGreaterThan(new BigDecimal("1.00"));
+    assertThat(candle.getVolume()).isGreaterThan(0);
+    //should not have taken more than 20 seconds
+    assertThat(candle.getDatetime() - now).isLessThan(20000);
+
   }
 
+  @Test
+  public void testPriceHistoryMutualFund() {
+    long now = System.currentTimeMillis();
+    PriceHistory priceHistory = httpTdaClient.priceHistory("VTSAX");
+    assertThat(priceHistory).isNotNull();
+    assertThat(priceHistory.getCandles().size()).isGreaterThan(5);
+    assertThat(priceHistory.getSymbol()).isEqualTo("VTSAX");
+    assertThat(priceHistory.isEmpty()).isFalse();
+    LOGGER.debug(priceHistory.toString());
+    Candle candle = priceHistory.getCandles().get(0);
+    LOGGER.debug(candle.toString());
+    assertThat(candle.getOpen()).isGreaterThan(new BigDecimal("1.00"));
+    assertThat(candle.getHigh()).isGreaterThan(new BigDecimal("1.00"));
+    assertThat(candle.getLow()).isGreaterThan(new BigDecimal("1.00"));
+    assertThat(candle.getClose()).isGreaterThan(new BigDecimal("1.00"));
+    //should not have taken more than 20 seconds
+    assertThat(candle.getDatetime() - now).isLessThan(20000);
+  }
 
   @Test
-  public void testPriceHistoryError() {
-    List<String> symbols = Arrays.asList("");
-    PriceHistory priceHistory = httpTdaClient.priceHistory(symbols, IntervalType.WEEKLY, 1,
-        PeriodType.YEAR, 1, null, null, false);
-    assertTrue("Should be error", priceHistory.isError());
-    LOGGER.debug("Error: {}", priceHistory.getErrorMsg());
-    assertFalse("Not empty", StringUtils.isBlank(priceHistory.getErrorMsg()));
-    assertTrue("Result should be null", priceHistory.getResults() == null);
+  //throwing 400 bad request
+  //TODO
+  @Ignore
+  public void testPriceHistoryForex() {
+    long now = System.currentTimeMillis();
+    PriceHistory priceHistory = httpTdaClient.priceHistory("NOK/JPY");
+    assertThat(priceHistory).isNotNull();
+    assertThat(priceHistory.getCandles().size()).isGreaterThan(10);
+    assertThat(priceHistory.getSymbol()).isEqualTo("NOK/JPY");
+    assertThat(priceHistory.isEmpty()).isFalse();
+    LOGGER.debug(priceHistory.toString());
+    Candle candle = priceHistory.getCandles().get(0);
+    LOGGER.debug(candle.toString());
+    assertThat(candle.getVolume()).isGreaterThan(0);
+    //should not have taken more than 20 seconds
+    assertThat(candle.getDatetime() - now).isLessThan(20000);
+  }
+
+  @Test
+  public void testPriceHistoryIndex() {
+    long now = System.currentTimeMillis();
+    PriceHistory priceHistory = httpTdaClient.priceHistory("$SPX.X");
+    assertThat(priceHistory).isNotNull();
+    assertThat(priceHistory.getCandles().size()).isGreaterThan(10);
+    assertThat(priceHistory.getSymbol()).isEqualTo("$SPX.X");
+    assertThat(priceHistory.isEmpty()).isFalse();
+    LOGGER.debug(priceHistory.toString());
+    Candle candle = priceHistory.getCandles().get(0);
+    LOGGER.debug(candle.toString());
+//    assertThat(candle.getVolume()).isGreaterThan(0);
+    //should not have taken more than 20 seconds
+    assertThat(candle.getDatetime() - now).isLessThan(20000);
+  }
+
+  @Test
+  public void testPriceHistoryEtf() {
+    long now = System.currentTimeMillis();
+    PriceHistory priceHistory = httpTdaClient.priceHistory("SPY");
+    assertThat(priceHistory).isNotNull();
+    assertThat(priceHistory.getCandles().size()).isGreaterThan(10);
+    assertThat(priceHistory.getSymbol()).isEqualTo("SPY");
+    assertThat(priceHistory.isEmpty()).isFalse();
+    LOGGER.debug(priceHistory.toString());
+    Candle candle = priceHistory.getCandles().get(0);
+    LOGGER.debug(candle.toString());
+//    assertThat(candle.getVolume()).isGreaterThan(0);
+    //should not have taken more than 20 seconds
+    assertThat(candle.getDatetime() - now).isLessThan(20000);
   }
 
   @Test
   @Ignore
-  public void getPriceHistoryData() throws IOException {
-    List<String> symbols = Arrays.asList("T");
-    byte[] bytes = httpTdaClient
-        .priceHistoryBytes(symbols, IntervalType.MINUTE, 30, PeriodType.DAY, 1, null, null, false);
-    LOGGER.debug("Length: {}", bytes.length);
-    File tempFile = File.createTempFile("price-history", ".dat");
-    FileUtils.writeByteArrayToFile(tempFile, bytes);
-    LOGGER.debug("Wrote: {} bytes to file: {}", bytes.length, tempFile.getAbsolutePath());
+  //this is returning EMPTY
+  //TODO
+  public void testPriceHistoryOption() {
+    long now = System.currentTimeMillis();
+    PriceHistory priceHistory = httpTdaClient.priceHistory("MSFT_061821P65");
+    assertThat(priceHistory).isNotNull();
+    assertThat(priceHistory.getCandles().size()).isGreaterThan(10);
+    assertThat(priceHistory.getSymbol()).isEqualTo("MSFT_061821P65");
+    assertThat(priceHistory.isEmpty()).isFalse();
+    LOGGER.debug(priceHistory.toString());
+    Candle candle = priceHistory.getCandles().get(0);
+    LOGGER.debug(candle.toString());
+//    assertThat(candle.getVolume()).isGreaterThan(0);
+    //should not have taken more than 20 seconds
+    assertThat(candle.getDatetime() - now).isLessThan(20000);
+  }
+
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testPriceHistoryEmpty() {
+    PriceHistory priceHistory = httpTdaClient.priceHistory(" ");
+    fail("should never get here");
+  }
+
+  @Test
+  public void testValidPriceHistory() {
+    long now = System.currentTimeMillis();
+    PriceHistReq request = Builder.priceHistReq().withSymbol("MSFT").build();
+    PriceHistory priceHistory = httpTdaClient.priceHistory(request);
+    assertThat(priceHistory).isNotNull();
+    assertThat(priceHistory.getCandles().size()).isGreaterThan(1000);
+    assertThat(priceHistory.getSymbol()).isEqualTo("MSFT");
+    assertThat(priceHistory.isEmpty()).isFalse();
+//    LOGGER.debug(priceHistory.toString());
+    Candle candle = priceHistory.getCandles().get(10);
+    LOGGER.debug(candle.toString());
+    assertThat(candle.getOpen()).isGreaterThan(new BigDecimal("1.00"));
+    assertThat(candle.getHigh()).isGreaterThan(new BigDecimal("1.00"));
+    assertThat(candle.getLow()).isGreaterThan(new BigDecimal("1.00"));
+    assertThat(candle.getClose()).isGreaterThan(new BigDecimal("1.00"));
+    assertThat(candle.getVolume()).isGreaterThan(0);
+    //should not have taken more than 20 seconds
+    assertThat(candle.getDatetime() - now).isLessThan(20000);
+  }
+
+
+  @Test
+  public void testValidPriceHistory2() {
+    long now = System.currentTimeMillis();
+    PriceHistReq request = Builder.priceHistReq()
+        .withSymbol("VGIAX")
+        .withStartDate(System.currentTimeMillis() - (1000 * 60 * 60 * 24 * 7))
+        .withFrequencyType(FrequencyType.minute)
+        .withFrequency(1)
+        .build();
+
+    PriceHistory priceHistory = httpTdaClient.priceHistory(request);
+    assertThat(priceHistory).isNotNull();
+    assertThat(priceHistory.getCandles().size()).isGreaterThan(1);
+    assertThat(priceHistory.getSymbol()).isEqualTo("VGIAX");
+    assertThat(priceHistory.isEmpty()).isFalse();
+    LOGGER.debug(priceHistory.toString());
+
+    Candle candle = priceHistory.getCandles().get(0);
+    LOGGER.debug(candle.toString());
+    assertThat(candle.getOpen()).isGreaterThan(new BigDecimal("1.00"));
+    assertThat(candle.getHigh()).isGreaterThan(new BigDecimal("1.00"));
+    assertThat(candle.getLow()).isGreaterThan(new BigDecimal("1.00"));
+    assertThat(candle.getClose()).isGreaterThan(new BigDecimal("1.00"));
+    //should not have taken more than 20 seconds
+    assertThat(candle.getDatetime() - now).isLessThan(20000);
   }
 
 }

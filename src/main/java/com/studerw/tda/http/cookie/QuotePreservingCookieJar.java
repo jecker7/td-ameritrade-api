@@ -84,12 +84,12 @@ public final class QuotePreservingCookieJar implements CookieJar {
 
         return cookies != null
                 ? Collections.unmodifiableList(cookies)
-                : Collections.<Cookie>emptyList();
+                : Collections.emptyList();
     }
 
     /**
      * Convert a request header to OkHttp's cookies via {@link HttpCookie}. That extra step handles
-     * multiple cookies in a single request header, which {@link Cookie#parse} doesn't support.
+     * multiple cookies in a single request header, which Cookie#parse doesn't support.
      */
     private List<Cookie> decodeHeaderAsJavaNetCookies(HttpUrl url, String header) {
         List<Cookie> result = new ArrayList<>();
